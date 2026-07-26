@@ -88,6 +88,28 @@ BUILDER_TREE_MAX_BYTES = 8 * 1024 * 1024
 INSTALLER_TERMINATION_GRACE_SECONDS = 0.5
 INSTALLER_KILL_WAIT_SECONDS = 2
 CONTROLLED_INSTALLER_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
+SECRET_ENV_NAME_PATTERNS = (
+    "TOKEN",
+    "API_KEY",
+    "ACCESS_KEY",
+    "SECRET",
+    "PASSWORD",
+    "CREDENTIAL",
+)
+SECRET_ENV_EXACT_NAMES = {
+    "SSH_AUTH_SOCK",
+    "SSH_ASKPASS",
+    "GIT_ASKPASS",
+}
+LAUNCH_FORBIDDEN_FLAGS = {
+    "--config",
+    "-c",
+    "--ask-for-approval",
+    "--sandbox",
+    "--yolo",
+    "--dangerously-bypass-hook-trust",
+}
+LAUNCH_FORBIDDEN_PREFIXES = tuple(f"{flag}=" for flag in LAUNCH_FORBIDDEN_FLAGS if flag != "-c")
 PACKAGE_METADATA_KEYS = {
     "layoutVersion",
     "version",
@@ -2824,7 +2846,11 @@ def bounded_codex_version(executable: Path, target: Path) -> str:
     return match.group(1)
 
 
-def inspect_software_installation(target: Path) -> SoftwareInstallation | None:
+def inspect_software_installation(
+    target: Path,
+    *,
+    verify_executable_version: bool = True,
+) -> SoftwareInstallation | None:
     packages = target / "packages"
     standalone = packages / "standalone"
     releases = standalone / "releases"
@@ -2893,9 +2919,11 @@ def inspect_software_installation(target: Path) -> SoftwareInstallation | None:
         visible_host_target = resolve_software_symlink(visible_host, "visible Codex code-mode host")
         if visible_host_target != host_executable:
             fail("visible Codex code-mode host is not bound to the current standalone release")
-    version = bounded_codex_version(executable, target)
-    if version != metadata["version"]:
-        fail("Codex standalone package metadata and executable versions disagree")
+    version = metadata["version"]
+    if verify_executable_version:
+        version = bounded_codex_version(executable, target)
+        if version != metadata["version"]:
+            fail("Codex standalone package metadata and executable versions disagree")
     return SoftwareInstallation(
         version=version,
         executable=executable,
@@ -2917,7 +2945,7 @@ def require_current_software(target: Path) -> SoftwareInstallation:
 
 
 def software_status(target: Path) -> dict[str, Any]:
-    installation = inspect_software_installation(target)
+    installation = inspect_software_installation(target, verify_executable_version=False)
     return {
         "schema_version": 1,
         "command": "software-status",
@@ -3206,7 +3234,7 @@ def builder_status(target: Path) -> dict[str, Any]:
         profile_state = inspect_builder_profile(target, expected_block)
         cache_state = inspect_builder_cache(target, plugin_version, source_manifest)
         config_enabled = _builder_enabled_on_disk(target, expected_block)
-    installation = inspect_software_installation(target)
+    installation = inspect_software_installation(target, verify_executable_version=False)
     installed = config_enabled and profile_state == "current" and cache_state == "current"
     state = "installed" if installed else "missing"
     if not installed and (config_enabled or profile_state != "missing" or cache_state != "missing"):
@@ -3481,8 +3509,7 @@ def run_builder_plugin_command(
     target: Path,
     arguments: list[str],
 ) -> dict[str, Any]:
-    environment = os.environ.copy()
-    environment["CODEX_HOME"] = str(target)
+    environment = managed_child_environment(target)
     process: subprocess.Popen[bytes] | None = None
     captured = {"stdout": bytearray(), "stderr": bytearray()}
     try:
@@ -4373,17 +4400,62 @@ def spawn_codex_child(
     return completed.returncode
 
 
+def is_secret_environment_name(name: str) -> bool:
+    upper = name.upper()
+    if upper.startswith("CODEX_"):
+        return True
+    if upper in SECRET_ENV_EXACT_NAMES:
+        return True
+    return any(pattern in upper for pattern in SECRET_ENV_NAME_PATTERNS)
+
+
+def managed_child_environment(target: Path) -> dict[str, str]:
+    environment = {
+        name: value for name, value in os.environ.items() if not is_secret_environment_name(name)
+    }
+    environment["CODEX_HOME"] = str(target)
+    return environment
+
+
+def validate_launch_arguments(arguments: list[str]) -> None:
+    index = 0
+    while index < len(arguments):
+        argument = arguments[index]
+        if argument == "--profile":
+            if index + 1 >= len(arguments):
+                fail("launch --profile must name the managed nddev-builder profile")
+            profile = arguments[index + 1]
+            if profile != BUILDER_PROFILE_ID:
+                fail("launch may only select the managed nddev-builder profile")
+            index += 2
+            continue
+        if argument.startswith("--profile="):
+            profile = argument.split("=", 1)[1]
+            if profile != BUILDER_PROFILE_ID:
+                fail("launch may only select the managed nddev-builder profile")
+            index += 1
+            continue
+        if argument in LAUNCH_FORBIDDEN_FLAGS or any(
+            argument.startswith(prefix) for prefix in LAUNCH_FORBIDDEN_PREFIXES
+        ):
+            fail("launch arguments must not override managed config, permissions, or hook trust")
+        if argument.startswith("-c="):
+            fail("launch arguments must not override managed config, permissions, or hook trust")
+        index += 1
+
+
 def launch_codex(target: Path, child_args: list[str]) -> int:
     forwarded = child_args[1:] if child_args[:1] == ["--"] else child_args
+    validate_launch_arguments(forwarded)
     with target_lock(target) as guard:
         require_effective_clean_managed(target)
         require_current_software(target)
-        environment = os.environ.copy()
-        environment["CODEX_HOME"] = str(target)
+        environment = managed_child_environment(target)
         require_effective_clean_managed(target)
         installation = require_current_software(target)
+        executable = str(installation.executable)
         revalidate_guard(guard, allow_missing=False)
-        return spawn_codex_child(str(installation.executable), forwarded, environment)
+    return spawn_codex_child(executable, forwarded, environment)
 
 
 def resolve_desktop_workspace(raw_workspace: str | None) -> Path | None:
@@ -4407,15 +4479,12 @@ def launch_desktop(target: Path, raw_workspace: str | None) -> int:
     workspace = resolve_desktop_workspace(raw_workspace)
     with target_lock(target) as guard:
         require_current_software(target)
-        environment = os.environ.copy()
-        environment["CODEX_HOME"] = str(target)
+        environment = managed_child_environment(target)
         installation = require_current_software(target)
+        executable = str(installation.executable)
+        forwarded = ["app", *([str(workspace)] if workspace is not None else [])]
         revalidate_guard(guard, allow_missing=False)
-        return spawn_codex_child(
-            str(installation.executable),
-            ["app", *([str(workspace)] if workspace is not None else [])],
-            environment,
-        )
+    return spawn_codex_child(executable, forwarded, environment)
 
 
 def human_output(value: dict[str, Any]) -> str:

@@ -75,9 +75,10 @@ canonical stdout version. `install-cli` and `update-cli` are idempotent when
 `0.145.0` is already current. A different installed version must be advanced
 with `update-cli`.
 
-`software-status` is non-mutating and reports `installed`, `current`, `version`,
-and `executable`. Partial or unsafe standalone layouts fail closed rather than
-being reported as healthy.
+`software-status` is non-mutating, never executes the target binary, and reports
+`installed`, `current`, `version`, and `executable` from the validated standalone
+layout. Partial or unsafe standalone layouts fail closed rather than being
+reported as healthy.
 
 ## Setups
 
@@ -194,13 +195,18 @@ python3 cli-tools/nddev_codex.py desktop \
 
 Both commands require the exact current target-owned CLI and never resolve
 `codex` from ambient `PATH`. `launch` additionally requires a clean canonical
-setup and forwards Codex arguments unchanged. `desktop` invokes exactly
-`codex app` with no argument, or with one validated absolute workspace;
-arbitrary upstream installer/source flags are not exposed. It does not require
-a managed setup because Codex CLI `0.145.0` passes only a workspace URL to the
-GUI: setting `CODEX_HOME` for the bridge process is not a guarantee that the
-desktop application will inherit the selected target configuration. Both keep
-standard I/O attached and return the child exit code.
+setup, rejects command-line overrides for managed config, permission posture,
+and hook trust (`--config`/`-c`, `--ask-for-approval`, `--sandbox`, `--yolo`,
+and `--dangerously-bypass-hook-trust`), allows only the managed
+`--profile nddev-builder` profile override, strips ambient provider secrets
+from the child environment, and releases the target lock before handing control
+to the child process. `desktop` invokes exactly `codex app` with no argument,
+or with one validated absolute workspace; arbitrary upstream installer/source
+flags are not exposed. It does not require a managed setup because Codex CLI
+`0.145.0` passes only a workspace URL to the GUI: setting `CODEX_HOME` for the
+bridge process is not a guarantee that the desktop application will inherit the
+selected target configuration. Both keep standard I/O attached and return the
+child exit code.
 
 After separate validation, direct execution is also possible without the
 manager's clean-state preflight:

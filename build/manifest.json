@@ -99,10 +99,21 @@
     "executable_source": "validated-target-owned-standalone-install",
     "forwards_arguments": true,
     "forwards_child_exit_code": true,
+    "forbidden_argument_overrides": [
+      "--config",
+      "-c",
+      "--ask-for-approval",
+      "--sandbox",
+      "--yolo",
+      "--dangerously-bypass-hook-trust"
+    ],
+    "lock_released_before_child": true,
     "json_manager_errors_supported": true,
     "manager_command": "python3 cli-tools/nddev_codex.py launch --target <absolute-target> -- [args...]",
+    "only_profile_override": "nddev-builder",
     "requires_clean_managed_target": true,
     "required_version": "0.145.0",
+    "secret_environment_filtered": true,
     "streams_child_stdio": true,
     "successful_child_output_wrapped": false,
     "target_environment_scope": "child-process-only",
@@ -155,6 +166,7 @@
       "macos",
       "linux"
     ],
+    "status_executes_binary": false,
     "tested_version": "0.145.0"
   },
   "transaction_policy": {
