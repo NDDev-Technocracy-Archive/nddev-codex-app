@@ -3486,15 +3486,25 @@ def run_builder_plugin_command(
     process: subprocess.Popen[bytes] | None = None
     captured = {"stdout": bytearray(), "stderr": bytearray()}
     try:
-        process = subprocess.Popen(
-            [str(installation.executable), *arguments],
-            cwd=target,
-            env=environment,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            start_new_session=True,
-        )
+        # Normalize the child's umask so the directories and files the Codex CLI
+        # creates (plugins/, cache/, marketplace/, the cached plugin manifest and
+        # tree) are owner-only. The builder cache validators reject group- or
+        # other-writable entries, and an ambient umask of 0002 (the Ubuntu
+        # default, unlike macOS 022) would create 0775 dirs that the validators
+        # then fail closed on. Mirrors run_verified_installer.
+        prior_umask = os.umask(0o077)
+        try:
+            process = subprocess.Popen(
+                [str(installation.executable), *arguments],
+                cwd=target,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True,
+            )
+        finally:
+            os.umask(prior_umask)
         if process.stdout is None or process.stderr is None:
             fail("official Codex plugin command output pipes are unavailable")
         selector = selectors.DefaultSelector()
