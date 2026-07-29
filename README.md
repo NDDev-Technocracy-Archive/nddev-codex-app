@@ -176,7 +176,7 @@ orient and route, scaffold a whole plugin from intent, run the local dev-mode
 test loop, publish, and review a bundle for release. The marketplace checker
 accepts `local`, `url`, `git-subdir`, and `npm` plugin sources. It intentionally ships no copied slash-command files and no
 plugin-bundled custom agents because neither is a native Codex plugin surface.
-See `plugins/nddev-builder/README.md` for its exact inventory and checker use.
+See `plugins/nddev-builder/README.md` for its capability inventory and checker use.
 
 ## Launch CLI or delegate the desktop bridge
 
@@ -236,9 +236,9 @@ setup launch or mutation.
 ## Public/private boundary
 
 This public repository contains runtime implementation, setup catalogs, public
-contracts, documentation, and public repository automation. Tests, fixtures,
-benchmarks, evidence, and release validation remain in private
-`nddev-harnesses`.
+contracts, documentation, and public repository automation. Development-only
+tests, fixtures, benchmarks, evidence, and release validation are not
+distributed with the module.
 
 ## License
 

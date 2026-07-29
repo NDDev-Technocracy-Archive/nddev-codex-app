@@ -12,8 +12,9 @@ The artifact contracts used by every workflow are documented in
 
 ## Skill inventory
 
-The plugin exposes exactly 29 skills: eleven creator/checker pairs, one
-cross-artifact reviewer, and six workflow/lifecycle skills.
+The tracked `skills/` directories are the authoritative plugin inventory.
+The tables below describe the supported creator/checker and workflow families
+without duplicating a mutable total.
 
 | Artifact | Creator | Checker |
 | --- | --- | --- |
@@ -30,8 +31,8 @@ cross-artifact reviewer, and six workflow/lifecycle skills.
 | Managed requirements | `codex-requirements-creator` | `codex-requirements-checker` |
 | Cross-artifact review | `codex-artifact-reviewer` | — |
 
-The six workflow/lifecycle skills orchestrate the artifacts above into a
-complete build cycle:
+The workflow/lifecycle skills orchestrate the artifacts above into a complete
+build cycle:
 
 | Workflow | Skill |
 | --- | --- |
@@ -140,6 +141,6 @@ ChatGPT authentication, hook trust review, MCP credentials, or a developer-mode
 app. Those prerequisites must be reported as runtime evidence, never replaced
 with a fake green result.
 
-The public module contains runtime implementation and documentation. Complete
-regression, release, fixture, and benchmark coverage remains in the private
-`nddev-harnesses` validation slice.
+The public module contains runtime implementation and documentation.
+Development-only regression, release, fixture, and benchmark coverage is not
+distributed with the plugin.
