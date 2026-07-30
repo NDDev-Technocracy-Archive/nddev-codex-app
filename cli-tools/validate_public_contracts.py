@@ -9,6 +9,7 @@ never reads private harness material, user state, or the network.
 from __future__ import annotations
 
 import json
+import stat
 import sys
 from pathlib import Path
 
@@ -29,10 +30,23 @@ REQUIRED_VERSION_KEYS = (
     "schema_version",
 )
 
+def is_real_file(path: Path) -> bool:
+    try:
+        return stat.S_ISREG(path.lstat().st_mode)
+    except FileNotFoundError:
+        return False
+
+
+def is_real_directory(path: Path) -> bool:
+    try:
+        return stat.S_ISDIR(path.lstat().st_mode)
+    except FileNotFoundError:
+        return False
+
 
 def load_json(relative: str, errors: list[str]) -> dict | None:
     path = ROOT / relative
-    if not path.is_file():
+    if not is_real_file(path):
         errors.append(f"missing required contract file: {relative}")
         return None
     try:
@@ -91,7 +105,7 @@ def main() -> int:
     marketplace = load_json(".agents/plugins/marketplace.json", errors)
 
     version_file = ROOT / "VERSION"
-    if not version_file.is_file():
+    if not is_real_file(version_file):
         errors.append("missing VERSION file")
         declared = None
     else:
@@ -117,7 +131,7 @@ def main() -> int:
         if contract.get("github_repository") != "NDDev-it-com/nddev-codex-app":
             errors.append("config/nddev-contract.json: unexpected github_repository")
         manifest_ref = contract.get("manifest_ref")
-        if manifest_ref and not (ROOT / str(manifest_ref)).is_file():
+        if manifest_ref and not is_real_file(ROOT / str(manifest_ref)):
             errors.append(f"config/nddev-contract.json: manifest_ref missing: {manifest_ref}")
         managed = contract.get("managed_state", {}).get("managed_files")
         if not managed:
@@ -131,7 +145,9 @@ def main() -> int:
 
     setups_root = ROOT / "setups"
     setup_dirs = (
-        sorted(p for p in setups_root.iterdir() if p.is_dir()) if setups_root.is_dir() else []
+        sorted(p for p in setups_root.iterdir() if is_real_directory(p))
+        if is_real_directory(setups_root)
+        else []
     )
     if not setup_dirs:
         errors.append("setups/: no setup projections found")
@@ -146,11 +162,11 @@ def main() -> int:
             else:
                 seen_ids.append(str(setup_id))
             for managed_name in setup.get("managed_files", []):
-                if not (setup_dir / str(managed_name)).is_file():
+                if not is_real_file(setup_dir / str(managed_name)):
                     errors.append(f"{relative}: declared managed file missing: {managed_name}")
         check_toml(f"{relative}/config.toml", errors, notices)
         agents_doc = setup_dir / "AGENTS.md"
-        if not agents_doc.is_file() or not agents_doc.read_text(encoding="utf-8").strip():
+        if not is_real_file(agents_doc) or not agents_doc.read_text(encoding="utf-8").strip():
             errors.append(f"{relative}/AGENTS.md: missing or empty")
 
     if manifest is not None:
@@ -176,8 +192,17 @@ def main() -> int:
         if "./plugins/nddev-builder" not in paths:
             errors.append(".agents/plugins/marketplace.json: nddev-builder source path missing")
         for entry_path in paths:
-            if entry_path and not (ROOT / str(entry_path)).is_dir():
+            if entry_path and not is_real_directory(ROOT / str(entry_path)):
                 errors.append(f"marketplace source path does not exist: {entry_path}")
+
+    for relative in ("AGENTS.md", ".claude/CLAUDE.md"):
+        if not is_real_file(ROOT / relative):
+            errors.append(f"required instruction path is not a regular file: {relative}")
+    claude_dir = ROOT / ".claude"
+    if not is_real_directory(claude_dir):
+        errors.append("required instruction path is not a real directory: .claude")
+    elif {path.name for path in claude_dir.iterdir()} != {"CLAUDE.md"}:
+        errors.append(".claude contains unexpected entries")
 
     for notice in notices:
         print(f"validate_public_contracts.py: NOTE {notice}")
