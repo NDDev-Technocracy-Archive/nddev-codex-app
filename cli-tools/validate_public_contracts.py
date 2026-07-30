@@ -30,6 +30,7 @@ REQUIRED_VERSION_KEYS = (
     "schema_version",
 )
 
+
 def is_real_file(path: Path) -> bool:
     try:
         return stat.S_ISREG(path.lstat().st_mode)
@@ -58,6 +59,14 @@ def load_json(relative: str, errors: list[str]) -> dict | None:
         errors.append(f"{relative}: top-level value must be an object")
         return None
     return data
+
+
+def contains_key(value: object, forbidden: str) -> bool:
+    if isinstance(value, dict):
+        return forbidden in value or any(contains_key(child, forbidden) for child in value.values())
+    if isinstance(value, list):
+        return any(contains_key(child, forbidden) for child in value)
+    return False
 
 
 def resolve_version_ref(ref: str, version: dict, errors: list[str]) -> None:
@@ -137,11 +146,18 @@ def main() -> int:
         if not managed:
             errors.append("config/nddev-contract.json: managed_state.managed_files empty")
 
-    if baseline is not None and version is not None:
-        tested_ref = baseline.get("codex_cli", {}).get("tested_version_ref", "")
-        resolve_version_ref(str(tested_ref), version, errors)
-        minimum_ref = baseline.get("permission_profiles", {}).get("minimum_codex_version_ref", "")
-        resolve_version_ref(str(minimum_ref), version, errors)
+    if baseline is not None:
+        if contains_key(baseline, "verified_date"):
+            errors.append(
+                "references/codex-baseline.json: verified_date is private observation evidence"
+            )
+        if version is not None:
+            tested_ref = baseline.get("codex_cli", {}).get("tested_version_ref", "")
+            resolve_version_ref(str(tested_ref), version, errors)
+            minimum_ref = baseline.get("permission_profiles", {}).get(
+                "minimum_codex_version_ref", ""
+            )
+            resolve_version_ref(str(minimum_ref), version, errors)
 
     setups_root = ROOT / "setups"
     setup_dirs = (

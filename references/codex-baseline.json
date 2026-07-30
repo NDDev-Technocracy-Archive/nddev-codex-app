@@ -33,6 +33,5 @@
     "installed_version": "0.146.0",
     "standalone_layout": "packages/standalone"
   },
-  "verified_date": "2026-07-22",
   "verified_version_ref": "build/version.json:codex_cli_tested"
 }
