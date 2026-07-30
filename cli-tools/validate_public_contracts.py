@@ -203,6 +203,8 @@ def main() -> int:
         errors.append("required instruction path is not a real directory: .claude")
     elif {path.name for path in claude_dir.iterdir()} != {"CLAUDE.md"}:
         errors.append(".claude contains unexpected entries")
+    elif (claude_dir / "CLAUDE.md").read_bytes() != b"@../AGENTS.md\n":
+        errors.append(".claude/CLAUDE.md must be the exact AGENTS.md bridge")
 
     for notice in notices:
         print(f"validate_public_contracts.py: NOTE {notice}")
