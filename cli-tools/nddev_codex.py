@@ -42,35 +42,35 @@ OWNER_FILE_MODE = 0o600
 OWNER_DIRECTORY_MODE = 0o700
 METADATA_MAX_BYTES = 256 * 1024
 MANAGED_PAYLOAD_MAX_BYTES = 8 * 1024 * 1024
-TESTED_CODEX_VERSION = "0.145.0"
+TESTED_CODEX_VERSION = "0.146.0"
 INSTALLER_RELEASE_TAG = f"rust-v{TESTED_CODEX_VERSION}"
 INSTALLER_NAME = "install.sh"
 INSTALLER_URL = (
     f"https://github.com/openai/codex/releases/download/{INSTALLER_RELEASE_TAG}/{INSTALLER_NAME}"
 )
-INSTALLER_SIZE_BYTES = 25_133
-INSTALLER_SHA256 = "1154e9daf713aacd1534efca8042bfd6665ad24bc1d1dfd86b8f439fe60a7a5d"
+INSTALLER_SIZE_BYTES = 30_285
+INSTALLER_SHA256 = "ba92dd27e5c06f0d3bbc58bfa4b9cfb6599cd2742fbb1f92a2765e6c07dedb5a"
 RELEASE_METADATA_URL = (
     f"https://api.github.com/repos/openai/codex/releases/tags/{INSTALLER_RELEASE_TAG}"
 )
 PACKAGE_CHECKSUM_ASSET = "codex-package_SHA256SUMS"
-PACKAGE_CHECKSUM_SHA256 = "2692d126c2fc9bfe35041f28c771c4296dda43704fad6b4a1c8752987aaee806"
+PACKAGE_CHECKSUM_SHA256 = "e6b6a3f937c9cab532f25cca6d81529b44f122f028182b9715038bf15f94b105"
 PACKAGE_ASSETS = {
     "aarch64-apple-darwin": (
         "codex-package-aarch64-apple-darwin.tar.gz",
-        "ece937169d4c9e910d60826a6ea4ae7848a16c089403d122e70e7da4ac41ba34",
+        "cd961b480f6dfc4703bd244601f1927231fa31a587cb9046ccdffa6c4c29e7d5",
     ),
     "x86_64-apple-darwin": (
         "codex-package-x86_64-apple-darwin.tar.gz",
-        "9d402c9ca814655fddc07b548d7086491c0afcebe1f746cdeba1045fd6f62646",
+        "f72f5ab71729e90b8e86343e9199c0f7a7eebbca5d6b1fc4cfcdaf35a3e5b641",
     ),
     "aarch64-unknown-linux-musl": (
         "codex-package-aarch64-unknown-linux-musl.tar.gz",
-        "54f79a05aba6f9abf8ef988abcae8bf2fcefba20beb549b4ff2b3acdb2cb6f54",
+        "c6eb28ec19bb5615b60e6787165ef28482481c2ce2617da565b83e591bc44c13",
     ),
     "x86_64-unknown-linux-musl": (
         "codex-package-x86_64-unknown-linux-musl.tar.gz",
-        "71a28d362c96ac9829bf8203a2c71be451aeb726adb843167fdaf0eae8fe7dd9",
+        "3c89125af1d7c98abec8beb551292ef99daca52e204e5852a9139feae2c467e5",
     ),
 }
 INSTALLER_MAX_BYTES = 64 * 1024
@@ -944,7 +944,7 @@ def config_base_intact(current: bytes, base: bytes) -> bool:
 
 # Runtime/user tables the Codex runtime or the operator may legitimately add to
 # the co-owned config.toml after the managed base. Verified against Codex
-# rust-v0.145.0: the runtime persists project trust into ``[projects.*]``, plugin
+# rust-v0.146.0: the runtime persists project trust into ``[projects.*]``, plugin
 # enablement into ``[plugins.*]`` and marketplace metadata into
 # ``[marketplaces.*]`` (config_toml.rs / edit.rs, via toml_edit); ``[mcp_servers.*]``
 # is the operator's own MCP surface. Any other top-level table -- for example a
@@ -1050,7 +1050,7 @@ def preserve_config_overlays(current: bytes, new_base: bytes) -> bytes:
     co-owned overlay tables re-attached.
 
     Codex persists project trust, plugin enablement and marketplace metadata into
-    config.toml at runtime (rust-v0.145.0, via toml_edit); the operator adds
+    config.toml at runtime (rust-v0.146.0, via toml_edit); the operator adds
     ``[mcp_servers.*]``; NDDev enables the builder there too. Rewriting the file to
     the pure setup base on update/switch -- the previous behaviour -- silently
     discarded all of it. Because a setup base is only top-level keys (setups
