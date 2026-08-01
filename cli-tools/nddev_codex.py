@@ -2778,26 +2778,50 @@ def read_package_metadata(path: Path) -> dict[str, Any]:
     return metadata
 
 
+#: Codex's refusal to create PATH aliases when its home sits under a temporary
+#: directory. Both quoted fields are Rust-side ``Debug``-escaped strings.
+TEMPORARY_CODEX_HOME_WARNING = re.compile(
+    r"WARNING: proceeding, even though we could not create PATH aliases: "
+    r"Refusing to create helper binaries under temporary dir "
+    r"(?P<root>\"(?:[^\"\\]|\\.)*\") "
+    r"\(codex_home: AbsolutePathBuf\((?P<home>\"(?:[^\"\\]|\\.)*\")\)\)"
+)
+
+
 def is_expected_temporary_codex_home_warning(diagnostics: str, target: Path) -> bool:
+    """Recognise Codex refusing to create PATH aliases under a temporary root.
+
+    The temporary root is read out of the warning rather than recomputed here.
+    Codex reports the root *it* resolved, which is not necessarily the one this
+    process would compute: a caller that redirects TMPDIR for isolation -- as
+    every harness lane does -- makes ``tempfile.gettempdir()`` disagree with the
+    system default Codex named, and rebuilding the string from the local value
+    then rejects a warning that is entirely expected.
+
+    Strictness is preserved by binding the message to this invocation instead:
+    the ``codex_home`` it names must be exactly our target, and that target must
+    genuinely sit under the root it named. A lookalike message about some other
+    directory still fails.
+    """
     try:
         canonical_target = target.resolve(strict=True)
     except OSError:
         return False
-    temporary_root = Path(tempfile.gettempdir())
-    if not temporary_root.is_absolute():
+    match = TEMPORARY_CODEX_HOME_WARNING.fullmatch(diagnostics)
+    if match is None:
         return False
     try:
-        canonical_target.relative_to(temporary_root)
+        reported_root = Path(json.loads(match.group("root")))
+        reported_home = Path(json.loads(match.group("home")))
+    except (TypeError, ValueError):
+        return False
+    if not reported_root.is_absolute() or reported_home != canonical_target:
+        return False
+    try:
+        canonical_target.relative_to(reported_root)
     except ValueError:
         return False
-    expected = (
-        "WARNING: proceeding, even though we could not create PATH aliases: "
-        "Refusing to create helper binaries under temporary dir "
-        f"{json.dumps(str(temporary_root), ensure_ascii=False)} "
-        "(codex_home: "
-        f"AbsolutePathBuf({json.dumps(str(canonical_target), ensure_ascii=False)}))"
-    )
-    return diagnostics == expected
+    return True
 
 
 def bounded_codex_version(executable: Path, target: Path) -> str:
@@ -2839,7 +2863,12 @@ def bounded_codex_version(executable: Path, target: Path) -> str:
         except UnicodeDecodeError:
             fail("installed Codex version output or diagnostics are not valid UTF-8")
     if diagnostics and not is_expected_temporary_codex_home_warning(diagnostics, target):
-        fail("installed Codex returned unexpected version diagnostics")
+        # Quote what actually arrived. Without it the operator learns only that
+        # some string failed to equal a string they cannot see, on a stream
+        # produced by a third-party binary whose wording is outside our control
+        # -- which turns a one-line vendor-drift fix into a bisect. Already
+        # bounded above by VERSION_OUTPUT_MAX_BYTES.
+        fail(f"installed Codex returned unexpected version diagnostics: {diagnostics!r}")
     match = re.fullmatch(r"codex-cli ([0-9][0-9A-Za-z.+-]*)", text)
     if match is None or not SEMVER_PATTERN.fullmatch(match.group(1)):
         fail(f"installed Codex returned an invalid version string: {text!r}")
