@@ -54,7 +54,7 @@ RELEASE_METADATA_URL = (
     f"https://api.github.com/repos/openai/codex/releases/tags/{INSTALLER_RELEASE_TAG}"
 )
 PACKAGE_CHECKSUM_ASSET = "codex-package_SHA256SUMS"
-PACKAGE_CHECKSUM_SHA256 = "e6b6a3f937c9cab532f25cca6d81529b44f122f028182b9715038bf15f94b105"
+PACKAGE_CHECKSUM_SHA256 = "1dc1f3e43f4d0a0f0befb7ddc1240a9b7ad69f291a1c0fb7da59de637aa405b1"
 PACKAGE_ASSETS = {
     "aarch64-apple-darwin": (
         "codex-package-aarch64-apple-darwin.tar.gz",
