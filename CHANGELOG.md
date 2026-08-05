@@ -2,6 +2,13 @@
 
 All notable changes to `nddev-codex-app` are documented here.
 
+## [0.1.2] - 2026-08-06
+
+- Update the pinned stable Codex CLI from `0.146.0` to `0.146.1`.
+- Re-verify the unchanged official standalone installer identity and current
+  configuration/checker surfaces; upstream reports one safer automatic-review
+  defaults bug fix and no format migration.
+
 ## [0.1.1] - 2026-07-30
 
 - Included the repository instruction and Claude compatibility bridge closure
