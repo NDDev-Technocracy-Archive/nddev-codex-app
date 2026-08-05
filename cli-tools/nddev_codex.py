@@ -58,19 +58,19 @@ PACKAGE_CHECKSUM_SHA256 = "1dc1f3e43f4d0a0f0befb7ddc1240a9b7ad69f291a1c0fb7da59d
 PACKAGE_ASSETS = {
     "aarch64-apple-darwin": (
         "codex-package-aarch64-apple-darwin.tar.gz",
-        "cd961b480f6dfc4703bd244601f1927231fa31a587cb9046ccdffa6c4c29e7d5",
+        "a0be385972f38d02e81f9b40de1f842daf8354636fc295666b8630d2f6a5aec6",
     ),
     "x86_64-apple-darwin": (
         "codex-package-x86_64-apple-darwin.tar.gz",
-        "f72f5ab71729e90b8e86343e9199c0f7a7eebbca5d6b1fc4cfcdaf35a3e5b641",
+        "5b61e447baa14747e1ea6ad10ad8fca1f8ef0d5e11f53ca88a144bf52cf12e06",
     ),
     "aarch64-unknown-linux-musl": (
         "codex-package-aarch64-unknown-linux-musl.tar.gz",
-        "c6eb28ec19bb5615b60e6787165ef28482481c2ce2617da565b83e591bc44c13",
+        "a72b2bd37dd69ece77f5584a418bc34ecfa4b28e769727134a1d604b4b2b8e5f",
     ),
     "x86_64-unknown-linux-musl": (
         "codex-package-x86_64-unknown-linux-musl.tar.gz",
-        "3c89125af1d7c98abec8beb551292ef99daca52e204e5852a9139feae2c467e5",
+        "15d9b6aaa47ee02743266581f8ab96b6049e3a2a13a82fbd7920745ba9fc34cb",
     ),
 }
 INSTALLER_MAX_BYTES = 64 * 1024
