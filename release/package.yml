@@ -1,0 +1,9 @@
+schema_version: 1
+package_name: nddev-codex-app
+version_source: VERSION
+archive_paths: >-
+  AGENTS.md .claude/CLAUDE.md README.md LICENSE VERSION CHANGELOG.md SECURITY.md .gitignore
+  .agents .github build cli-tools config plugins references setups release
+runtime_paths: >-
+  AGENTS.md .claude/CLAUDE.md README.md LICENSE VERSION .agents build cli-tools config plugins
+  references setups
