@@ -5,7 +5,7 @@
     "location": "sibling .<target-name>.nddev-codex-backups",
     "slots": 10
   },
-  "build_version": "0.1.2",
+  "build_version": "0.1.3",
   "command_policy": {
     "json_supported": [
       "list",
@@ -112,7 +112,7 @@
     "manager_command": "python3 cli-tools/nddev_codex.py launch --target <absolute-target> -- [args...]",
     "only_profile_override": "nddev-builder",
     "requires_clean_managed_target": true,
-    "required_version": "0.146.1",
+    "required_version": "0.147.0",
     "secret_environment_filtered": true,
     "streams_child_stdio": true,
     "successful_child_output_wrapped": false,
@@ -146,10 +146,10 @@
     "installer": {
       "abnormal_exit_cleanup": "terminate-process-group-before-unlock",
       "asset": "install.sh",
-      "release_tag": "rust-v0.146.1",
+      "release_tag": "rust-v0.147.0",
       "sha256": "ba92dd27e5c06f0d3bbc58bfa4b9cfb6599cd2742fbb1f92a2765e6c07dedb5a",
       "size_bytes": 30285,
-      "url": "https://github.com/openai/codex/releases/download/rust-v0.146.1/install.sh"
+      "url": "https://github.com/openai/codex/releases/download/rust-v0.147.0/install.sh"
     },
     "layout": {
       "code_mode_host": "packages/standalone/current/bin/codex-code-mode-host",
@@ -167,7 +167,7 @@
       "linux"
     ],
     "status_executes_binary": false,
-    "tested_version": "0.146.1"
+    "tested_version": "0.147.0"
   },
   "transaction_policy": {
     "agents_override_blocked_commands": [

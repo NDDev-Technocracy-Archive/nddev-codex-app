@@ -2,6 +2,14 @@
 
 All notable changes to `nddev-codex-app` are documented here.
 
+## [0.1.3] - 2026-08-08
+
+- Update the pinned stable Codex CLI from `0.146.1` to `0.147.0` and refresh
+  the official package checksum manifest plus all four supported archives.
+- Revalidate the unchanged top-level config schema, native plugin lifecycle,
+  and permission profiles. The removed `codex exec --full-auto` compatibility
+  flag is not used by this manager; full-auto remains a native config posture.
+
 ## [0.1.2] - 2026-08-06
 
 - Update the pinned stable Codex CLI from `0.146.0` to `0.146.1`.
