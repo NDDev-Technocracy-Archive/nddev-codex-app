@@ -170,7 +170,7 @@ AGENT_FIELDS = {
 }
 
 MCP_APPROVAL_MODES = {"auto", "prompt", "writes", "approve"}
-# The Codex 0.146.1 reasoning-effort ladder (protocol/src/openai_models.rs).
+# The Codex 0.147.0 reasoning-effort ladder (protocol/src/openai_models.rs).
 # config.schema.json types `ReasoningEffort` as a non-empty string, and
 # `model_reasoning_effort`/`plan_mode_reasoning_effort` share the same type as an
 # agent role's effort, so accept the full known ladder for all three (a stricter
@@ -295,8 +295,8 @@ SAFE_SECRET_PLACEHOLDERS = {
     "xxxxxxxx",
 }
 
-# Top-level properties from the official Codex 0.146.1 ConfigToml schema:
-# https://github.com/openai/codex/blob/rust-v0.146.1/codex-rs/core/config.schema.json
+# Top-level properties from the official Codex 0.147.0 ConfigToml schema:
+# https://github.com/openai/codex/blob/rust-v0.147.0/codex-rs/core/config.schema.json
 # Validation is intentionally top-level only. Named tables such as
 # mcp_servers.<name>, permissions.<name>, plugins, marketplaces, projects, and
 # agents have dynamic keys and are validated by Codex or focused checkers.
@@ -2925,7 +2925,7 @@ def _validate_config_file(path: Path, *, budget: ScanBudget | None = None) -> Ar
             path,
             payload,
             CONFIG_TOP_LEVEL_KEYS,
-            "Codex 0.146.1 config top-level",
+            "Codex 0.147.0 config top-level",
         )
     return report
 
@@ -2982,7 +2982,7 @@ def _validate_requirements_file(
         path,
         payload,
         REQUIREMENTS_TOP_LEVEL_KEYS,
-        "Codex 0.146.1 requirements top-level",
+        "Codex 0.147.0 requirements top-level",
     )
     allowed = payload.get("allowed_permission_profiles")
     default_permissions = payload.get("default_permissions")
