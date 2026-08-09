@@ -2,6 +2,19 @@
 
 All notable changes to `nddev-codex-app` are documented here.
 
+## [0.2.0] - 2026-08-09
+
+- Add the capability-negotiated public provider protocol v3 with exact
+  HarnessBundle validation, pure plans, post-lock target revalidation,
+  target-bound backups, rollback, and durable component/bundle/plan provenance.
+- Separate the canonical `nddev` content setup identity from `safe` and
+  `full-auto` permission profiles while retaining the previous `--setup`
+  spellings as bounded compatibility aliases and reading schema-v1 stamps.
+- Correct the README manager version and preserve the public repository's
+  local-validation-only boundary.
+- Add durable prepared/committed recovery, exact projection-kind negotiation,
+  and pre-plan TOML/skill-tree validation without reapplying uncertain effects.
+
 ## [0.1.3] - 2026-08-08
 
 - Update the pinned stable Codex CLI from `0.146.1` to `0.147.0` and refresh

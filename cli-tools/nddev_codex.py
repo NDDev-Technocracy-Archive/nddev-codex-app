@@ -25,11 +25,23 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, NoReturn
 
+# `importlib.util.spec_from_file_location` does not add a script's directory to
+# sys.path.  Private consumers load the public manager that way for fault
+# injection, so sibling vendored protocol modules must remain discoverable.
+CLI_TOOLS_ROOT = Path(__file__).resolve().parent
+if str(CLI_TOOLS_ROOT) not in sys.path:
+    sys.path.insert(0, str(CLI_TOOLS_ROOT))
+
+import provider_protocol_v3 as provider_wire_v3  # noqa: E402
+import provider_runtime_v3  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_ROOT = ROOT / "setups"
 VERSION = (ROOT / "VERSION").read_text(encoding="ascii").strip()
 PRODUCT_NAME = "nddev-codex-app"
 STAMP_NAME = "NDDEV-CODEX-SETUP.json"
+CONTENT_SETUP_ID = "nddev"
+CONTENT_SETUP_PATH = ROOT / "config" / "content-setup.json"
 BACKUP_NAME = "NDDEV-CODEX-BACKUP.json"
 MANAGED_FILES = ("config.toml", "AGENTS.md")
 OVERRIDE_NAME = "AGENTS.override.md"
@@ -130,13 +142,18 @@ PERMISSION_CONFIG_KEYS = ("default_permissions", "approval_policy")
 PERMISSION_CONFIG_LINE_PATTERN = re.compile(
     r'(?P<key>[A-Za-z_][A-Za-z0-9_]*) = "(?P<value>[^"\\\r\n]*)"\Z'
 )
-STAMP_KEYS = {
+LEGACY_STAMP_KEYS = {
     "schema_version",
     "product_name",
     "build_version",
     "setup_id",
     "canonical_target",
     "managed_files",
+}
+STAMP_KEYS = LEGACY_STAMP_KEYS | {
+    "content_setup_id",
+    "content_setup_digest",
+    "permission_profile",
 }
 BACKUP_KEYS = {
     "schema_version",
@@ -148,6 +165,23 @@ BACKUP_KEYS = {
     "managed_files",
     "stamp_sha256",
 }
+
+PROVIDER_STATE_NAME = "NDDEV-CODEX-PROVIDER.json"
+PROVIDER_BACKUP_DIRECTORY = ".nddev-codex-provider-backups"
+PROVIDER_V3 = provider_runtime_v3.Runtime(
+    provider_runtime_v3.Config(
+        root=ROOT,
+        provider_id=PRODUCT_NAME,
+        harness_id="codex",
+        provider_version=VERSION,
+        state_name=PROVIDER_STATE_NAME,
+        backup_directory=PROVIDER_BACKUP_DIRECTORY,
+        component_kinds=frozenset({"instruction", "setting", "skill"}),
+        native_namespaces=frozenset({"AGENTS.md", "config.toml", ".agents/skills"}),
+        syntax_by_path=(("config.toml", "toml"),),
+        permission_profiles=("safe", "full-auto"),
+    )
+)
 
 
 class CodexSetupError(Exception):
@@ -244,6 +278,30 @@ def canonical_json(value: Any) -> bytes:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def content_setup_identity() -> tuple[str, str]:
+    """Return the profile-independent prepared content setup identity."""
+    metadata = load_json_object(CONTENT_SETUP_PATH, "content setup metadata")
+    require_exact_keys(
+        metadata,
+        {"schema_version", "id", "description"},
+        "content setup metadata",
+    )
+    if (
+        metadata["schema_version"] != 1
+        or metadata["id"] != CONTENT_SETUP_ID
+        or not isinstance(metadata["description"], str)
+        or not metadata["description"].strip()
+    ):
+        fail("content setup metadata identity or schema is invalid")
+    canonical = json.dumps(
+        metadata,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return CONTENT_SETUP_ID, f"sha256:{sha256_bytes(canonical)}"
 
 
 def identity_of(info: os.stat_result) -> PathIdentity:
@@ -451,6 +509,7 @@ def list_setups() -> list[dict[str, Any]]:
     if not CATALOG_ROOT.is_dir() or CATALOG_ROOT.is_symlink():
         fail("setup catalog is missing or unsafe")
     entries: list[dict[str, Any]] = []
+    content_id, content_digest = content_setup_identity()
     for candidate in sorted(CATALOG_ROOT.iterdir(), key=lambda path: path.name):
         if not candidate.is_dir() or candidate.is_symlink():
             fail(f"catalog entry must be a real directory: {candidate.name}")
@@ -458,6 +517,10 @@ def list_setups() -> list[dict[str, Any]]:
         entries.append(
             {
                 "id": metadata["id"],
+                "legacy_alias": True,
+                "content_setup_id": content_id,
+                "content_setup_digest": content_digest,
+                "permission_profile": metadata["id"],
                 "description": metadata["description"],
                 "managed_files": metadata["managed_files"],
             }
@@ -898,8 +961,21 @@ def load_stamp(target: Path) -> dict[str, Any] | None:
         max_bytes=METADATA_MAX_BYTES,
     )
     stamp = parse_json_object(content, f"managed stamp {stamp_path}")
-    require_exact_keys(stamp, STAMP_KEYS, "managed stamp")
-    if stamp["schema_version"] != 1 or stamp["product_name"] != PRODUCT_NAME:
+    schema = stamp.get("schema_version")
+    if schema == 1:
+        require_exact_keys(stamp, LEGACY_STAMP_KEYS, "legacy managed stamp")
+        legacy_profile = stamp.get("setup_id")
+        content_id, content_digest = content_setup_identity()
+        stamp = {
+            **stamp,
+            "schema_version": 2,
+            "content_setup_id": content_id,
+            "content_setup_digest": content_digest,
+            "permission_profile": legacy_profile,
+        }
+    else:
+        require_exact_keys(stamp, STAMP_KEYS, "managed stamp")
+    if stamp["schema_version"] != 2 or stamp["product_name"] != PRODUCT_NAME:
         fail("managed stamp identity or schema is invalid")
     if not isinstance(stamp["build_version"], str) or not SEMVER_PATTERN.fullmatch(
         stamp["build_version"]
@@ -908,6 +984,14 @@ def load_stamp(target: Path) -> dict[str, Any] | None:
     if not isinstance(stamp["setup_id"], str):
         fail("managed stamp setup_id must be a string")
     validate_setup_id(stamp["setup_id"])
+    content_id, content_digest = content_setup_identity()
+    if (
+        stamp["content_setup_id"] != content_id
+        or stamp["content_setup_digest"] != content_digest
+        or stamp["permission_profile"] != stamp["setup_id"]
+        or stamp["permission_profile"] not in {"safe", "full-auto"}
+    ):
+        fail("managed stamp content setup or permission profile is invalid")
     if stamp["canonical_target"] != str(target):
         fail("managed stamp is bound to a different canonical target")
     validate_digest_map(stamp["managed_files"], "managed stamp managed_files")
@@ -1107,6 +1191,9 @@ def inspect_target(target: Path) -> dict[str, Any]:
         return {
             "state": "missing",
             "setup_id": None,
+            "content_setup_id": None,
+            "content_setup_digest": None,
+            "permission_profile": None,
             "build_version": None,
             "drift": [],
             "unmanaged_managed_paths": [],
@@ -1124,6 +1211,9 @@ def inspect_target(target: Path) -> dict[str, Any]:
         return {
             "state": "unmanaged",
             "setup_id": None,
+            "content_setup_id": None,
+            "content_setup_digest": None,
+            "permission_profile": None,
             "build_version": None,
             "drift": [],
             "unmanaged_managed_paths": existing,
@@ -1159,6 +1249,9 @@ def inspect_target(target: Path) -> dict[str, Any]:
     return {
         "state": "managed",
         "setup_id": stamp["setup_id"],
+        "content_setup_id": stamp["content_setup_id"],
+        "content_setup_digest": stamp["content_setup_digest"],
+        "permission_profile": stamp["permission_profile"],
         "build_version": stamp["build_version"],
         "drift": drift,
         "unmanaged_managed_paths": [],
@@ -1210,12 +1303,16 @@ def require_effective_clean_managed(target: Path) -> dict[str, Any]:
 
 
 def stamp_bytes(target: Path, setup_id: str, rendered: dict[str, bytes]) -> bytes:
+    content_id, content_digest = content_setup_identity()
     return canonical_json(
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "product_name": PRODUCT_NAME,
             "build_version": VERSION,
             "setup_id": setup_id,
+            "content_setup_id": content_id,
+            "content_setup_digest": content_digest,
+            "permission_profile": setup_id,
             "canonical_target": str(target),
             "managed_files": {name: sha256_bytes(rendered[name]) for name in MANAGED_FILES},
         }
@@ -2344,6 +2441,7 @@ def apply_rendered(
 
 def plan_setup(target: Path, setup_id: str) -> dict[str, Any]:
     _, rendered = render_setup(setup_id)
+    content_id, content_digest = content_setup_identity()
     status = inspect_target(target)
     if status["agents_override_present"]:
         reject_instruction_override(target, "plan, apply, switch, restore, or launch")
@@ -2378,6 +2476,9 @@ def plan_setup(target: Path, setup_id: str) -> dict[str, Any]:
         "command": "plan",
         "target": str(target),
         "setup_id": setup_id,
+        "content_setup_id": content_id,
+        "content_setup_digest": content_digest,
+        "permission_profile": setup_id,
         "operation": operation,
         "changes": changes,
         "backup_required": status["state"] == "managed",
@@ -2476,6 +2577,7 @@ def verify_rollback_postcondition(
 
 def mutate_setup(target: Path, setup_id: str, command: str) -> dict[str, Any]:
     _, rendered = render_setup(setup_id)
+    content_id, content_digest = content_setup_identity()
     plan = plan_setup(target, setup_id)
     if command == "apply" and plan["operation"] == "switch":
         fail("apply cannot change setup identity; use switch")
@@ -2487,6 +2589,9 @@ def mutate_setup(target: Path, setup_id: str, command: str) -> dict[str, Any]:
             "command": command,
             "target": str(target),
             "setup_id": setup_id,
+            "content_setup_id": content_id,
+            "content_setup_digest": content_digest,
+            "permission_profile": setup_id,
             "changed": [],
             "backup_slot": None,
         }
@@ -2556,6 +2661,9 @@ def mutate_setup(target: Path, setup_id: str, command: str) -> dict[str, Any]:
         "command": command,
         "target": str(target),
         "setup_id": setup_id,
+        "content_setup_id": content_id,
+        "content_setup_digest": content_digest,
+        "permission_profile": setup_id,
         "changed": plan["changes"],
         "backup_slot": backup_slot,
     }
@@ -2627,6 +2735,9 @@ def restore_slot(target: Path, slot: int) -> dict[str, Any]:
         "command": "restore",
         "target": str(target),
         "setup_id": envelope["source_setup_id"],
+        "content_setup_id": final["content_setup_id"],
+        "content_setup_digest": final["content_setup_digest"],
+        "permission_profile": final["permission_profile"],
         "restored_backup_slot": slot,
         "rollback_backup_slot": rollback_slot,
     }
@@ -2665,6 +2776,8 @@ def remove_setup(target: Path) -> dict[str, Any]:
         "command": "remove",
         "target": str(target),
         "removed_setup_id": status["setup_id"],
+        "removed_content_setup_id": status["content_setup_id"],
+        "removed_permission_profile": status["permission_profile"],
         "backup_slot": backup_slot,
     }
 
@@ -4091,7 +4204,14 @@ def validate_builder_plugin_result(
 ) -> None:
     require_exact_keys(
         result,
-        {"pluginId", "name", "marketplaceName", "version", "installedPath", "authPolicy"},
+        {
+            "pluginId",
+            "name",
+            "marketplaceName",
+            "version",
+            "installedPath",
+            "authPolicy",
+        },
         "official Codex plugin-add result",
     )
     if (
@@ -4531,6 +4651,12 @@ def human_output(value: dict[str, Any]) -> str:
     if command == "list":
         return "\n".join(f"{item['id']}: {item['description']}" for item in value["setups"])
     if command == "status":
+        if value.get("protocol_version") == provider_wire_v3.PROTOCOL_VERSION:
+            return (
+                f"{value['state']}: {value['target']}; "
+                f"drift={value.get('drift_state', 'unknown')}; "
+                f"bundle={value.get('bundle_digest', 'none')}"
+            )
         setup = f" ({value['setup_id']})" if value["setup_id"] else ""
         drift = f"; drift={','.join(value['drift'])}" if value["drift"] else ""
         override = f"; {OVERRIDE_NAME}=present" if value["agents_override_present"] else ""
@@ -4601,6 +4727,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--workspace",
         help="Optional absolute workspace directory passed to `codex app`.",
     )
+    provider_runtime_v3.add_commands(
+        subparsers,
+        add_target,
+        permission_profiles=True,
+    )
     return parser
 
 
@@ -4612,14 +4743,35 @@ def add_target(parser: argparse.ArgumentParser) -> None:
 def run(args: argparse.Namespace) -> dict[str, Any] | int:
     if args.command == "list":
         return {"schema_version": 1, "command": "list", "setups": list_setups()}
+    if args.command == "provider-info":
+        return PROVIDER_V3.info()
     target = resolve_target(args.target)
     if args.command == "status":
+        provider_status = PROVIDER_V3.status(target)
+        if provider_status["state"] in {"managed", "recovery_required"} or provider_status.get(
+            "cleanup_state"
+        ):
+            return {
+                "schema_version": 3,
+                "command": "status",
+                "target": str(target),
+                **provider_status,
+            }
         return {
             "schema_version": 1,
             "command": "status",
             "target": str(target),
             **inspect_target(target),
+            "target_digest": provider_status["target_digest"],
         }
+    if args.command == "validate-bundle":
+        return PROVIDER_V3.validate(args)
+    if args.command == "plan-operation":
+        return PROVIDER_V3.plan(target, args)
+    if args.command == "apply-operation":
+        return PROVIDER_V3.apply(target, args)
+    if args.command == "recover-operation":
+        return PROVIDER_V3.recover(target)
     if args.command == "plan":
         return plan_setup(target, args.setup)
     if args.command in {"apply", "switch"}:
@@ -4648,7 +4800,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         result = run(args)
-    except (CodexSetupError, OSError) as exc:
+    except (CodexSetupError, provider_wire_v3.ProtocolError, OSError) as exc:
         if isinstance(exc, OSError):
             detail = exc.strerror or type(exc).__name__
             error_message = f"filesystem operation failed: {detail}"
@@ -4657,7 +4809,24 @@ def main(argv: list[str] | None = None) -> int:
         else:
             error_message = str(exc)
         if getattr(args, "output_json", False):
-            print(json.dumps({"schema_version": 1, "error": error_message}, sort_keys=True))
+            if isinstance(exc, provider_wire_v3.ProtocolError):
+                failure: dict[str, Any] = {
+                    "rejected": True,
+                    "reason": exc.reason,
+                    "message": error_message,
+                }
+                if args.command == "validate-bundle":
+                    failure.update(
+                        {
+                            "bundle_format": args.bundle_format,
+                            "bundle_digest": args.bundle_digest,
+                            "artifact_digest": args.artifact_digest,
+                            "bundle_size": args.bundle_size,
+                        }
+                    )
+                print(json.dumps(failure, sort_keys=True))
+            else:
+                print(json.dumps({"schema_version": 1, "error": error_message}, sort_keys=True))
         else:
             print(f"nddev-codex: error: {error_message}", file=sys.stderr)
         return 2

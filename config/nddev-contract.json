@@ -13,7 +13,7 @@
     "managed_file_mode": "0600",
     "preserve_other_state": true,
     "stamp_file": "NDDEV-CODEX-SETUP.json",
-    "stamp_schema": 1
+    "stamp_schema": 2
   },
   "permission_defaults": {
     "admin_enforcement": false,
@@ -135,16 +135,63 @@
   },
   "setup_system": {
     "catalog_root": "setups",
-    "identity_source": "<setup>/setup.json:id",
+    "identity_source": "config/content-setup.json:id",
+    "content_setup_id": "nddev",
+    "content_setup_ref": "config/content-setup.json",
+    "permission_profile_source": "legacy <setup>/setup.json:id",
+    "legacy_setup_aliases": true,
     "list_command": "python3 cli-tools/nddev_codex.py list [--json]",
     "selection_option": "--setup <id>",
     "setup_ids": [
       "safe",
       "full-auto"
     ],
+    "permission_profiles": [
+      "safe",
+      "full-auto"
+    ],
     "launch_command": "python3 cli-tools/nddev_codex.py launch --target <absolute-target> -- [args...]",
     "builder_launch_command": "python3 cli-tools/nddev_codex.py launch --target <absolute-target> -- --profile nddev-builder [args...]",
     "status_command": "python3 cli-tools/nddev_codex.py status --target <absolute-dir> [--json]"
+  },
+  "provider_protocol_v3": {
+    "protocol_version": 3,
+    "bundle_format": "ai-stp-bundle/1",
+    "plan_format": "ai-stp-provider-plan/3",
+    "state_format": "ai-stp-provider-state/3",
+    "entrypoint": "cli-tools/nddev_codex.py",
+    "core_commands": [
+      "provider-info",
+      "validate-bundle",
+      "plan-operation",
+      "apply-operation",
+      "recover-operation",
+      "status"
+    ],
+    "operations": [
+      "backup",
+      "install",
+      "remove",
+      "replace",
+      "restore"
+    ],
+    "optional_operations": {
+      "launch": false,
+      "software_install": false,
+      "software_update": false,
+      "software_remove": false
+    },
+    "permission_profiles": [
+      "safe",
+      "full-auto"
+    ],
+    "state_file": "NDDEV-CODEX-PROVIDER.json",
+    "state_schema": 3,
+    "control_directory": ".nddev-codex-provider-backups",
+    "lock_model": "canonical-target-directory-flock",
+    "prepared_and_composed_share_bundle_path": true,
+    "exact_plan_digest_required": true,
+    "post_lock_target_revalidation": true
   },
   "software_install": {
     "commands": {

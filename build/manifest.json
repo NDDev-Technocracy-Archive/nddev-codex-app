@@ -5,7 +5,7 @@
     "location": "sibling .<target-name>.nddev-codex-backups",
     "slots": 10
   },
-  "build_version": "0.1.3",
+  "build_version": "0.2.0",
   "command_policy": {
     "json_supported": [
       "list",
@@ -19,7 +19,12 @@
       "install-cli",
       "update-cli",
       "builder-status",
-      "install-builder"
+      "install-builder",
+      "provider-info",
+      "validate-bundle",
+      "plan-operation",
+      "apply-operation",
+      "recover-operation"
     ],
     "plan_mutates": false,
     "restore_backup_option": "--backup <0..9>",
@@ -36,7 +41,11 @@
       "builder-status",
       "install-builder",
       "launch",
-      "desktop"
+      "desktop",
+      "validate-bundle",
+      "plan-operation",
+      "apply-operation",
+      "recover-operation"
     ]
   },
   "entrypoint": "python3 cli-tools/nddev_codex.py",
@@ -46,6 +55,18 @@
     "NDDEV-CODEX-SETUP.json"
   ],
   "name": "nddev-codex-app",
+  "content_setup": {
+    "id": "nddev",
+    "identity_ref": "config/content-setup.json",
+    "legacy_aliases": [
+      "safe",
+      "full-auto"
+    ],
+    "permission_profiles": [
+      "safe",
+      "full-auto"
+    ]
+  },
   "permission_policy": {
     "admin_enforcement": false,
     "built_in_profiles_only": true,
@@ -118,6 +139,24 @@
     "successful_child_output_wrapped": false,
     "target_environment_scope": "child-process-only",
     "target_must_equal_runtime_home": true
+  },
+  "provider_protocol_v3": {
+    "bundle_format": "ai-stp-bundle/1",
+    "control_directory": ".nddev-codex-provider-backups",
+    "core_commands": [
+      "provider-info",
+      "validate-bundle",
+      "plan-operation",
+      "apply-operation",
+      "recover-operation",
+      "status"
+    ],
+    "permission_profiles": [
+      "safe",
+      "full-auto"
+    ],
+    "protocol_version": 3,
+    "state_file": "NDDEV-CODEX-PROVIDER.json"
   },
   "schema_version": 3,
   "setup_ids": [

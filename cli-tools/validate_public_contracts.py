@@ -109,6 +109,7 @@ def main() -> int:
     version = load_json("build/version.json", errors)
     manifest = load_json("build/manifest.json", errors)
     contract = load_json("config/nddev-contract.json", errors)
+    content_setup = load_json("config/content-setup.json", errors)
     baseline = load_json("references/codex-baseline.json", errors)
     plugin = load_json("plugins/nddev-builder/.codex-plugin/plugin.json", errors)
     marketplace = load_json(".agents/plugins/marketplace.json", errors)
@@ -129,6 +130,9 @@ def main() -> int:
                 "VERSION and build/version.json:build_version disagree: "
                 f"{declared!r} != {version.get('build_version')!r}"
             )
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        if f"Version `{version.get('build_version')}`" not in readme:
+            errors.append("README.md manager version disagrees with build/version.json")
 
     if manifest is not None and version is not None:
         if manifest.get("build_version") != version.get("build_version"):
@@ -145,6 +149,33 @@ def main() -> int:
         managed = contract.get("managed_state", {}).get("managed_files")
         if not managed:
             errors.append("config/nddev-contract.json: managed_state.managed_files empty")
+        setup_system = contract.get("setup_system", {})
+        if setup_system.get("content_setup_id") != "nddev" or setup_system.get(
+            "permission_profiles"
+        ) != ["safe", "full-auto"]:
+            errors.append("setup_system must separate nddev content from permission profiles")
+        provider = contract.get("provider_protocol_v3", {})
+        if provider.get("protocol_version") != 3 or provider.get("core_commands") != [
+            "provider-info",
+            "validate-bundle",
+            "plan-operation",
+            "apply-operation",
+            "recover-operation",
+            "status",
+        ]:
+            errors.append("provider_protocol_v3 core contract is incomplete")
+        for key in (
+            "prepared_and_composed_share_bundle_path",
+            "exact_plan_digest_required",
+            "post_lock_target_revalidation",
+        ):
+            if provider.get(key) is not True:
+                errors.append(f"provider_protocol_v3.{key} must be true")
+
+    if content_setup is not None and (
+        content_setup.get("schema_version") != 1 or content_setup.get("id") != "nddev"
+    ):
+        errors.append("config/content-setup.json: identity must be immutable nddev schema 1")
 
     if baseline is not None:
         if contains_key(baseline, "verified_date"):
@@ -221,6 +252,22 @@ def main() -> int:
         errors.append(".claude contains unexpected entries")
     elif (claude_dir / "CLAUDE.md").read_bytes() != b"@../AGENTS.md\n":
         errors.append(".claude/CLAUDE.md must be the exact AGENTS.md bridge")
+
+    for relative in (
+        "cli-tools/nddev_codex.py",
+        "cli-tools/provider_protocol_v3.py",
+        "cli-tools/provider_runtime_v3.py",
+    ):
+        path = ROOT / relative
+        if not is_real_file(path):
+            errors.append(f"missing provider implementation: {relative}")
+    manager_mode = stat.S_IMODE((ROOT / "cli-tools/nddev_codex.py").stat().st_mode)
+    if manager_mode != 0o755:
+        errors.append("cli-tools/nddev_codex.py must be mode 0755 for provider execution")
+
+    workflows = ROOT / ".github" / "workflows"
+    if workflows.exists():
+        errors.append("public repository must not contain GitHub Actions workflows")
 
     for notice in notices:
         print(f"validate_public_contracts.py: NOTE {notice}")
