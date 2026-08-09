@@ -1,7 +1,7 @@
 # NDDev Codex Setup Manager
 
 `nddev-codex-app` is a dependency-free manager for a caller-selected Codex
-home. Version `0.3.12` installs the exact tested official Codex CLI standalone
+home. Version `0.2.0` installs the exact tested official Codex CLI standalone
 release into that target and switches one of two complete NDDev configuration
 sets without deleting unrelated target state. The repository also publishes
 the independently installable `nddev-builder` Codex marketplace.
@@ -80,9 +80,16 @@ with `update-cli`.
 layout. Partial or unsafe standalone layouts fail closed rather than being
 reported as healthy.
 
-## Setups
+## Content setup and permission profiles
 
-| Setup | Default permission profile | Default approval policy |
+The canonical content setup is `nddev`. Its immutable identity and digest are
+independent from execution posture. `safe` and `full-auto` are permission
+profiles, not separate content setups. The standalone commands continue to
+accept them through `--setup` as bounded compatibility aliases; status and the
+schema-v2 stamp report `content_setup_id`, `content_setup_digest`, and
+`permission_profile` separately.
+
+| Legacy alias / permission profile | Default permission profile | Default approval policy |
 | --- | --- | --- |
 | `safe` | `:read-only` | `on-request` |
 | `full-auto` | `:danger-full-access` | `never` |
@@ -109,9 +116,26 @@ python3 cli-tools/nddev_codex.py remove \
 ```
 
 `apply` installs a missing target or updates the current setup. `switch` is
-required to change setup identity. Unmanaged `config.toml` or `AGENTS.md`,
+required to change the permission profile in the compatibility lifecycle.
+The canonical content setup identity does not change. Unmanaged `config.toml` or `AGENTS.md`,
 managed drift, unsafe links, and a target-level `AGENTS.override.md` fail
 closed.
+
+## ai_stp provider protocol v3
+
+Prepared and composed setups converge on the same exact `ai-stp-bundle/1`
+path. `provider-info` negotiates the native Codex component surface;
+`validate-bundle` and `plan-operation` are pure; `apply-operation` requires the
+approved plan digest and revalidates the canonical target after taking its
+inode lock. Provider state records the exact setup passport, ordered component
+references, bundle and artifact digests, provider release/build, approved plan,
+permission profile, native ownership, and target-bound `BackupRef`.
+
+The v3 surface currently owns the required setup core only. Standalone Codex
+software installation and launch remain available, but are not falsely
+advertised as provider-v3 operations. Software removal remains unsupported.
+Unsupported component kinds or native namespaces fail before planning or
+target mutation.
 
 ## Install NDDev Builder
 
