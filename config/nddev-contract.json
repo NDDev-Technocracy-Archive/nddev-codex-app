@@ -165,6 +165,7 @@
       "validate-bundle",
       "plan-operation",
       "apply-operation",
+      "recover-operation",
       "status"
     ],
     "operations": [

@@ -12,6 +12,8 @@ All notable changes to `nddev-codex-app` are documented here.
   spellings as bounded compatibility aliases and reading schema-v1 stamps.
 - Correct the README manager version and preserve the public repository's
   local-validation-only boundary.
+- Add durable prepared/committed recovery, exact projection-kind negotiation,
+  and pre-plan TOML/skill-tree validation without reapplying uncertain effects.
 
 ## [0.1.3] - 2026-08-08
 

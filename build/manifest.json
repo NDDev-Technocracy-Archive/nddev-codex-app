@@ -23,7 +23,8 @@
       "provider-info",
       "validate-bundle",
       "plan-operation",
-      "apply-operation"
+      "apply-operation",
+      "recover-operation"
     ],
     "plan_mutates": false,
     "restore_backup_option": "--backup <0..9>",
@@ -43,7 +44,8 @@
       "desktop",
       "validate-bundle",
       "plan-operation",
-      "apply-operation"
+      "apply-operation",
+      "recover-operation"
     ]
   },
   "entrypoint": "python3 cli-tools/nddev_codex.py",
@@ -146,6 +148,7 @@
       "validate-bundle",
       "plan-operation",
       "apply-operation",
+      "recover-operation",
       "status"
     ],
     "permission_profiles": [

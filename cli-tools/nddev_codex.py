@@ -178,6 +178,7 @@ PROVIDER_V3 = provider_runtime_v3.Runtime(
         backup_directory=PROVIDER_BACKUP_DIRECTORY,
         component_kinds=frozenset({"instruction", "setting", "skill"}),
         native_namespaces=frozenset({"AGENTS.md", "config.toml", ".agents/skills"}),
+        syntax_by_path=(("config.toml", "toml"),),
         permission_profiles=("safe", "full-auto"),
     )
 )
@@ -4747,7 +4748,9 @@ def run(args: argparse.Namespace) -> dict[str, Any] | int:
     target = resolve_target(args.target)
     if args.command == "status":
         provider_status = PROVIDER_V3.status(target)
-        if provider_status["state"] == "managed":
+        if provider_status["state"] in {"managed", "recovery_required"} or provider_status.get(
+            "cleanup_state"
+        ):
             return {
                 "schema_version": 3,
                 "command": "status",
@@ -4767,6 +4770,8 @@ def run(args: argparse.Namespace) -> dict[str, Any] | int:
         return PROVIDER_V3.plan(target, args)
     if args.command == "apply-operation":
         return PROVIDER_V3.apply(target, args)
+    if args.command == "recover-operation":
+        return PROVIDER_V3.recover(target)
     if args.command == "plan":
         return plan_setup(target, args.setup)
     if args.command in {"apply", "switch"}:

@@ -160,6 +160,7 @@ def main() -> int:
             "validate-bundle",
             "plan-operation",
             "apply-operation",
+            "recover-operation",
             "status",
         ]:
             errors.append("provider_protocol_v3 core contract is incomplete")
