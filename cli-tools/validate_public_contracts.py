@@ -63,7 +63,9 @@ def load_json(relative: str, errors: list[str]) -> dict | None:
 
 def contains_key(value: object, forbidden: str) -> bool:
     if isinstance(value, dict):
-        return forbidden in value or any(contains_key(child, forbidden) for child in value.values())
+        return forbidden in value or any(
+            contains_key(child, forbidden) for child in value.values()
+        )
     if isinstance(value, list):
         return any(contains_key(child, forbidden) for child in value)
     return False
@@ -136,7 +138,9 @@ def main() -> int:
 
     if manifest is not None and version is not None:
         if manifest.get("build_version") != version.get("build_version"):
-            errors.append("build/manifest.json:build_version disagrees with build/version.json")
+            errors.append(
+                "build/manifest.json:build_version disagrees with build/version.json"
+            )
 
     if contract is not None:
         if contract.get("contract_version") != 3:
@@ -145,15 +149,21 @@ def main() -> int:
             errors.append("config/nddev-contract.json: unexpected github_repository")
         manifest_ref = contract.get("manifest_ref")
         if manifest_ref and not is_real_file(ROOT / str(manifest_ref)):
-            errors.append(f"config/nddev-contract.json: manifest_ref missing: {manifest_ref}")
+            errors.append(
+                f"config/nddev-contract.json: manifest_ref missing: {manifest_ref}"
+            )
         managed = contract.get("managed_state", {}).get("managed_files")
         if not managed:
-            errors.append("config/nddev-contract.json: managed_state.managed_files empty")
+            errors.append(
+                "config/nddev-contract.json: managed_state.managed_files empty"
+            )
         setup_system = contract.get("setup_system", {})
         if setup_system.get("content_setup_id") != "nddev" or setup_system.get(
             "permission_profiles"
         ) != ["safe", "full-auto"]:
-            errors.append("setup_system must separate nddev content from permission profiles")
+            errors.append(
+                "setup_system must separate nddev content from permission profiles"
+            )
         provider = contract.get("provider_protocol_v3", {})
         if provider.get("protocol_version") != 3 or provider.get("core_commands") != [
             "provider-info",
@@ -175,7 +185,9 @@ def main() -> int:
     if content_setup is not None and (
         content_setup.get("schema_version") != 1 or content_setup.get("id") != "nddev"
     ):
-        errors.append("config/content-setup.json: identity must be immutable nddev schema 1")
+        errors.append(
+            "config/content-setup.json: identity must be immutable nddev schema 1"
+        )
 
     if baseline is not None:
         if contains_key(baseline, "verified_date"):
@@ -210,10 +222,15 @@ def main() -> int:
                 seen_ids.append(str(setup_id))
             for managed_name in setup.get("managed_files", []):
                 if not is_real_file(setup_dir / str(managed_name)):
-                    errors.append(f"{relative}: declared managed file missing: {managed_name}")
+                    errors.append(
+                        f"{relative}: declared managed file missing: {managed_name}"
+                    )
         check_toml(f"{relative}/config.toml", errors, notices)
         agents_doc = setup_dir / "AGENTS.md"
-        if not is_real_file(agents_doc) or not agents_doc.read_text(encoding="utf-8").strip():
+        if (
+            not is_real_file(agents_doc)
+            or not agents_doc.read_text(encoding="utf-8").strip()
+        ):
             errors.append(f"{relative}/AGENTS.md: missing or empty")
 
     if manifest is not None:
@@ -235,16 +252,22 @@ def main() -> int:
 
     if marketplace is not None:
         entries = marketplace.get("plugins", [])
-        paths = [e.get("source", {}).get("path") for e in entries if isinstance(e, dict)]
+        paths = [
+            e.get("source", {}).get("path") for e in entries if isinstance(e, dict)
+        ]
         if "./plugins/nddev-builder" not in paths:
-            errors.append(".agents/plugins/marketplace.json: nddev-builder source path missing")
+            errors.append(
+                ".agents/plugins/marketplace.json: nddev-builder source path missing"
+            )
         for entry_path in paths:
             if entry_path and not is_real_directory(ROOT / str(entry_path)):
                 errors.append(f"marketplace source path does not exist: {entry_path}")
 
     for relative in ("AGENTS.md", ".claude/CLAUDE.md"):
         if not is_real_file(ROOT / relative):
-            errors.append(f"required instruction path is not a regular file: {relative}")
+            errors.append(
+                f"required instruction path is not a regular file: {relative}"
+            )
     claude_dir = ROOT / ".claude"
     if not is_real_directory(claude_dir):
         errors.append("required instruction path is not a real directory: .claude")
@@ -263,7 +286,9 @@ def main() -> int:
             errors.append(f"missing provider implementation: {relative}")
     manager_mode = stat.S_IMODE((ROOT / "cli-tools/nddev_codex.py").stat().st_mode)
     if manager_mode != 0o755:
-        errors.append("cli-tools/nddev_codex.py must be mode 0755 for provider execution")
+        errors.append(
+            "cli-tools/nddev_codex.py must be mode 0755 for provider execution"
+        )
 
     workflows = ROOT / ".github" / "workflows"
     if not is_real_directory(workflows):
@@ -271,7 +296,9 @@ def main() -> int:
     else:
         workflow_files = {path.name for path in workflows.iterdir() if path.is_file()}
         if workflow_files != {"test.yml"}:
-            errors.append("public repository may contain only the release-check test.yml workflow")
+            errors.append(
+                "public repository may contain only the release-check test.yml workflow"
+            )
         else:
             workflow = (workflows / "test.yml").read_text(encoding="utf-8")
             required_fragments = (
@@ -283,9 +310,13 @@ def main() -> int:
             )
             for fragment in required_fragments:
                 if fragment not in workflow:
-                    errors.append(f"test.yml is missing required release-check fragment: {fragment!r}")
+                    errors.append(
+                        f"test.yml is missing required release-check fragment: {fragment!r}"
+                    )
             if "pull_request_target" in workflow or "${{ secrets" in workflow:
-                errors.append("test.yml may not use privileged PR triggers or repository secrets")
+                errors.append(
+                    "test.yml may not use privileged PR triggers or repository secrets"
+                )
 
     for notice in notices:
         print(f"validate_public_contracts.py: NOTE {notice}")
