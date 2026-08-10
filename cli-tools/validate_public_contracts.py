@@ -266,8 +266,26 @@ def main() -> int:
         errors.append("cli-tools/nddev_codex.py must be mode 0755 for provider execution")
 
     workflows = ROOT / ".github" / "workflows"
-    if workflows.exists():
-        errors.append("public repository must not contain GitHub Actions workflows")
+    if not is_real_directory(workflows):
+        errors.append("required release-check workflow directory is missing")
+    else:
+        workflow_files = {path.name for path in workflows.iterdir() if path.is_file()}
+        if workflow_files != {"test.yml"}:
+            errors.append("public repository may contain only the release-check test.yml workflow")
+        else:
+            workflow = (workflows / "test.yml").read_text(encoding="utf-8")
+            required_fragments = (
+                "permissions:\n  contents: read",
+                "runs-on: ubuntu-24.04",
+                "name: test",
+                "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                "run: python3 cli-tools/validate_public_contracts.py",
+            )
+            for fragment in required_fragments:
+                if fragment not in workflow:
+                    errors.append(f"test.yml is missing required release-check fragment: {fragment!r}")
+            if "pull_request_target" in workflow or "${{ secrets" in workflow:
+                errors.append("test.yml may not use privileged PR triggers or repository secrets")
 
     for notice in notices:
         print(f"validate_public_contracts.py: NOTE {notice}")
