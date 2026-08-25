@@ -2,7 +2,7 @@
   "contract_version": 3,
   "description": "Portable, target-explicit manager for Codex configuration and an official target-owned Codex CLI install, plus an independently installable native Codex builder marketplace.",
   "display_name": "NDDev Codex Setup Manager",
-  "github_repository": "NDDev-it-com/nddev-codex-app",
+  "github_repository": "rldyourmnd/nddev-codex-app",
   "license": "AGPL-3.0-or-later",
   "manifest_ref": "build/manifest.json",
   "managed_state": {

@@ -6,8 +6,8 @@
     "name": "Danil Silantyev / NDDev",
     "url": "https://github.com/rldyourmnd"
   },
-  "homepage": "https://github.com/NDDev-it-com/nddev-codex-app/tree/main/plugins/nddev-builder",
-  "repository": "https://github.com/NDDev-it-com/nddev-codex-app",
+  "homepage": "https://github.com/rldyourmnd/nddev-codex-app/tree/main/plugins/nddev-builder",
+  "repository": "https://github.com/rldyourmnd/nddev-codex-app",
   "license": "AGPL-3.0-or-later",
   "keywords": [
     "agents",
@@ -30,7 +30,7 @@
       "Write",
       "Execute"
     ],
-    "websiteURL": "https://github.com/NDDev-it-com/nddev-codex-app",
+    "websiteURL": "https://github.com/rldyourmnd/nddev-codex-app",
     "defaultPrompt": [
       "Use NDDev Builder to create or validate a native Codex artifact."
     ]

@@ -10,7 +10,7 @@ in this repository. Only the latest numeric release is supported.
 ## Reporting a vulnerability
 
 Report vulnerabilities privately through
-[GitHub Security Advisories](https://github.com/NDDev-it-com/nddev-codex-app/security/advisories/new).
+[GitHub Security Advisories](https://github.com/rldyourmnd/nddev-codex-app/security/advisories/new).
 Do not publish exploit details, credentials, tokens, private configuration, or
 backup contents in an issue or pull request.
 

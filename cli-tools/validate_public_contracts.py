@@ -141,7 +141,7 @@ def main() -> int:
     if contract is not None:
         if contract.get("contract_version") != 3:
             errors.append("config/nddev-contract.json: contract_version must be 3")
-        if contract.get("github_repository") != "NDDev-it-com/nddev-codex-app":
+        if contract.get("github_repository") != "rldyourmnd/nddev-codex-app":
             errors.append("config/nddev-contract.json: unexpected github_repository")
         manifest_ref = contract.get("manifest_ref")
         if manifest_ref and not is_real_file(ROOT / str(manifest_ref)):
