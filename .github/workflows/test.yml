@@ -1,4 +1,4 @@
-name: ci
+name: test
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: test-${{ github.event.pull_request.number || github.ref }}
   # Obsolete pull-request heads are cancelled; a running main validation always completes.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
