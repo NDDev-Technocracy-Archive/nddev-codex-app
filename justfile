@@ -8,6 +8,7 @@ default:
 check:
     just --fmt --check
     python3 cli-tools/validate_public_contracts.py
+    python3 -m json.tool tools/ci-tools.json > /dev/null
     actionlint
     zizmor --offline --no-progress .github
     gitleaks dir --no-banner --redact .
