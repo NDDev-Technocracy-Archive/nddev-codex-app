@@ -268,3 +268,15 @@ distributed with the module.
 
 Copyright © 2026 Danil Silantyev / NDDev. Licensed under
 AGPL-3.0-or-later; see [LICENSE](LICENSE).
+
+## Source verification
+
+Run `just check` to validate the public contracts, audit workflows and scan the
+working source for secrets. It reads public source without running the manager or
+using installed provider state. `just verify` adds a scan of every retained Git
+commit. These commands need Python, Just, actionlint, zizmor, ShellCheck and Gitleaks
+on PATH; CI prepares their declared versions through the shared check.
+
+The pull request runs the source check and merge stops. A push to `main` runs the
+full source check. The required `gate` succeeds only when the shared check succeeds.
+These checks do not claim installation, provider execution or model behavior.
