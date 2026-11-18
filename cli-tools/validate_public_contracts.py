@@ -9,6 +9,7 @@ never reads private harness material, user state, or the network.
 from __future__ import annotations
 
 import json
+import re
 import stat
 import sys
 from pathlib import Path
@@ -278,14 +279,27 @@ def main() -> int:
                 "permissions:\n  contents: read",
                 "runs-on: ubuntu-24.04",
                 "name: test",
-                "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
-                "run: python3 cli-tools/validate_public_contracts.py",
+                "hosted-runner: ubuntu-24.04",
+                "needs: [check]",
+                'run: test "$CHECK_RESULT" = success',
             )
             for fragment in required_fragments:
                 if fragment not in workflow:
                     errors.append(
                         f"test.yml is missing required release-check fragment: {fragment!r}"
                     )
+            if not re.search(
+                r"uses: NDDev-Technocracy-OpenNetwork/nddev-ci/"
+                r"\.github/workflows/check\.yml@[0-9a-f]{40}\b",
+                workflow,
+            ):
+                errors.append("test.yml must pin the shared public check by commit")
+            justfile = ROOT / "justfile"
+            if not is_real_file(justfile) or (
+                "python3 cli-tools/validate_public_contracts.py"
+                not in justfile.read_text(encoding="utf-8")
+            ):
+                errors.append("justfile must retain the public contract validator")
             if "pull_request_target" in workflow or "${{ secrets" in workflow:
                 errors.append("test.yml may not use privileged PR triggers or repository secrets")
 

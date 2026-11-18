@@ -8,4 +8,6 @@
 
 ## Verification
 
-- Test: `python3 cli-tools/validate_public_contracts.py`.
+- Source checks: `just check`.
+- Full source and retained-history check: `just verify`.
+- The public contract validator can also run directly: `python3 cli-tools/validate_public_contracts.py`.
